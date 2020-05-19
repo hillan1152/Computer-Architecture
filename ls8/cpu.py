@@ -7,7 +7,28 @@ class CPU:
 
     def __init__(self):
         """Construct a new CPU."""
-        pass
+        self.reg = [0] * 0b00001000 # binary 8
+        self.ram = [0] * 0b100000000 # binary 256
+
+        # INTERNAL REGISTERS
+        self.pc = 0 # keeps address of currently executing instruction
+
+        self.halted = False
+        # self.IR = self.reg[self.PC]  # Copy of currently executing instruction
+
+        # self.MAR = self.PC # HOLDS memory address we're reading/writing
+
+        # self.MDR = self.IR # value to write or value just read
+
+        # self.FL  = [0] * 0b00001000 # 8 bits
+
+        # Registers External
+        # self.IM = self.reg[6] # interrupt mask
+        # self.IS = self.reg[7] # interrupt status
+        # self.SP = self.reg[8] # stack pointer
+        
+
+
 
     def load(self):
         """Load a program into memory."""
@@ -29,7 +50,32 @@ class CPU:
         for instruction in program:
             self.ram[address] = instruction
             address += 1
+        
+        # loop through ram 
+        # while not self.halted:
+        #     instruction = self.ram[self.PC]
+            
+        #     if instruction == PRN:
+        #         print("ram", self.ram)
+        #         print("")
+        #         print("")
+        #         print("reg", self.ram)
+        #         self.PC += 1
+            
+        #     elif instruction == LDI:
+        #         r_position = self.ram[self.PC + 1]
+        #         reg_num = self.ram[self.PC + 2]
 
+        #         self.reg[r_position] = reg_num
+        #         self.PC += 3
+            
+        #     elif instruction == HLT:
+        #         self.halted == True
+
+
+        #     else:
+        #         print(f"unknown instruction {instruction} at address {self.PC}")
+        #         exit(1)
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
@@ -60,6 +106,42 @@ class CPU:
 
         print()
 
+    def ram_read(self, MAR):
+        return self.ram[MAR]
+
+    def ram_write(self, MAR, MDR):
+        # accept a value to write, and the address to write to
+        self.ram[MAR] = MDR
+
     def run(self):
         """Run the CPU."""
-        pass
+        # needs to read the memory address stored in pc
+
+        # store results in IR
+
+        # needs: PC, IR, ram_read
+        LDI = 0b10000010 # LDI R0,8
+        PRN = 0b01000111 # PRN R0
+        HLT = 0b00000001 # HLT
+
+
+
+        while not self.halted:
+            IR = self.ram_read(self.pc)
+            operand_a = self.ram_read(self.pc + 1)
+            operand_b = self.ram_read(self.pc + 2)
+            
+            if IR == LDI:
+                self.reg[operand_a] = operand_b
+                self.pc += 3
+            
+            elif IR == PRN:
+                print(self.reg[operand_a])
+                self.pc += 2
+            
+            elif IR == HLT:
+                self.halted = True
+        
+            else:
+                print(f"unknown instruction {IR} at address {self.pc}")
+                exit(1)
