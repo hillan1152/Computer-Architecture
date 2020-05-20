@@ -6,6 +6,7 @@ import sys
 from cpu import *
 
 cpu = CPU()
-
-print(cpu.load())
+cpu.load()
 cpu.run()
+# print("first arg", sys.argv[0])
+# print("second arg", sys.argv[1])
