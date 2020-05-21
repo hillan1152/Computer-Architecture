@@ -28,12 +28,19 @@ class CPU:
         self.pc = 0 # keeps address of currently executing instruction
         self.halted = False # lets 
         self.sp = 7 # stack pointer, only for the stack
-        self.reg[self.sp] = 0xf4 # Start at f4 aka 244
+        self.reg[self.sp] = 0xF4 # Start at f4 aka 244
         # self.FL  = [0] * 0b00001000 # 8 bits
 
         # Registers External
         # self.IM = self.reg[6] # interrupt mask
         # self.IS = self.reg[7] # interrupt status
+
+    def ram_read(self, MAR):
+        return self.ram[MAR]
+
+    def ram_write(self, MAR, MDR):
+        # accept a value to write, and the address to write to
+        self.ram[MAR] = MDR
 
     def handle_HLT(self):
         self.halted = True
@@ -73,15 +80,22 @@ class CPU:
             # print("Ram Current Value", self.ram[self.reg[self.sp]])
             # print("Replacement Value", operand_a)
         """
-        self.ram[self.reg[self.sp]] = operand_a
+        copy_reg = self.reg[operand_a]
+        self.ram[self.reg[self.sp]] = copy_reg
         # moves address 2 spots
-        # print("Ram Total", self.ram)
         # self.pc += 2
         
 
     def handle_pop(self):
         # Retrieve value from RAM @ SP
-        print("POP", self.ram[self.reg[self.sp]])
+        operand_a = self.ram_read(self.pc + 1)
+        # print("reg", self.reg)
+        copy = self.ram[self.reg[self.sp]]
+        # print("copy", copy)
+        # print("RAM", self.ram)
+        # self.reg[operand_a] = copy
+        self.reg[operand_a] = copy
+        self.reg[self.sp] += 1
         # Store Value in Reg
         # increment SP
         # self.pc += 2
@@ -149,12 +163,6 @@ class CPU:
 
         print()
 
-    def ram_read(self, MAR):
-        return self.ram[MAR]
-
-    def ram_write(self, MAR, MDR):
-        # accept a value to write, and the address to write to
-        self.ram[MAR] = MDR
 
     def run(self):
         """Run the CPU."""
@@ -174,7 +182,9 @@ class CPU:
                 exit(1)
 
         """
+
         IF/ELSE STATEMENTS BELOW
+
         """
         # while not self.halted:
         #     IR = self.ram_read(self.pc)
