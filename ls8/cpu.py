@@ -204,7 +204,9 @@ class CPU:
 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
-        if op == "CMP":
+        elif op == "AND":
+            self.reg[reg_a] = self.reg[reg_a] & self.reg[reg_b]
+        elif op == "CMP":
             if self.reg[reg_a] > self.reg[reg_b]:
                 self.reg[self.FL] = 0b00000010
             elif self.reg[reg_a] < self.reg[reg_b]:
