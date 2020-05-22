@@ -12,6 +12,11 @@ POP = 0b01000110
 ADD = 0b10100000
 CALL = 0b01010000
 RET = 0b00010001
+CMP = 0b10100111
+JEQ = 0b01010101
+JMP = 0b01010100
+JNE = 0b01010110
+
 
 class CPU:
     """Main CPU class."""
@@ -20,23 +25,32 @@ class CPU:
         """Construct a new CPU."""
         self.reg = [0] * 0b00001000 # binary 8
         self.ram = [0] * 256 # binary 256
+        self.pc = 0 # keeps address of currently executing instruction
+        self.halted = False # controls run
+        # Branch Table
         self.branchtable = {}
         self.branchtable[HLT] = self.handle_HLT
         self.branchtable[LDI] = self.handle_LDI
         self.branchtable[PRN] = self.handle_PRN
-        self.branchtable[MUL] = self.handle_MUL
-        self.branchtable[ADD] = self.handle_ADD
+        self.branchtable[JMP] = self.handle_JMP
+        # Stack Work
         self.branchtable[PUSH] = self.handle_push
         self.branchtable[POP] = self.handle_pop
         self.branchtable[CALL] = self.handle_CALL
         self.branchtable[RET] = self.handle_RET
-        # INTERNAL REGISTERS
-        self.pc = 0 # keeps address of currently executing instruction
-        self.halted = False # lets 
+        # ALU
+        self.branchtable[MUL] = self.handle_MUL
+        self.branchtable[ADD] = self.handle_ADD
+        self.branchtable[CMP] = self.handle_CMP
+        self.branchtable[JEQ] = self.handle_JEQ
+        self.branchtable[JNE] = self.handle_JNE
+
+        # Stack Information
         self.sp = 7 # stack pointer, only for the stack
         self.reg[self.sp] = 0xF4 # Start at f4 aka 244
-        # self.FL  = [0] * 0b00001000 # 8 bits
-
+        # Flags
+        self.FL  = 5 # flag pointer in reg
+        self.reg[self.FL] = 0 # Starts at 0 in reg, will adjust binary depending on CMP
         # Registers External
         # self.IM = self.reg[6] # interrupt mask
         # self.IS = self.reg[7] # interrupt status
@@ -47,21 +61,17 @@ class CPU:
     def ram_write(self, MAR, MDR):
         # accept a value to write, and the address to write to
         self.ram[MAR] = MDR
-
+       
     def handle_HLT(self):
         self.halted = True
 
     def handle_CALL(self):
         # make copy of address to return to
         operand_a = self.ram_read(self.pc + 1) # 00000000
-        # print("self reg", self.reg[self.sp])
         self.reg[self.sp] -= 1
         self.ram[self.reg[self.sp]] = self.pc + 2
-
         self.pc = self.reg[operand_a]
-        # print(self.ram)
-        # print(self.reg)
-        # print("op_a", operand_a)
+
 
     def handle_RET(self):
         pop_stack = self.ram[self.reg[self.sp]]
@@ -78,7 +88,12 @@ class CPU:
         operand_a = self.ram_read(self.pc + 1)
         print(self.reg[operand_a])
         # self.pc += 2
-
+        
+    def handle_CMP(self):
+        operand_a = self.ram_read(self.pc + 1)
+        operand_b = self.ram_read(self.pc + 2)
+        self.alu("CMP", operand_a, operand_b)
+ 
     def handle_MUL(self):
         operand_a = self.ram_read(self.pc + 1)
         operand_b = self.ram_read(self.pc + 2)
@@ -90,6 +105,34 @@ class CPU:
         operand_b = self.ram_read(self.pc + 2)
         self.alu("ADD", operand_a, operand_b)
         # self.pc += 3
+    
+    def handle_JEQ(self):
+        operand_a = self.ram_read(self.pc + 1)
+        if self.reg[self.FL] == 0b00000001:
+            self.pc = self.reg[operand_a]
+        else:
+            # print("REG", self.reg)
+            # print("ram", self.ram)
+            # print("PC ", self.pc)
+            # print("op_a", operand_a)
+            self.pc += 2
+
+    def handle_JNE(self):
+        operand_a = self.ram_read(self.pc + 1)
+        # print("operand", operand)
+        # print("OP A", operand_a)
+        # print("REG", self.reg)
+        # print(self.pc)
+        if self.reg[self.FL] != 0b00000001:
+            # print(self.reg[self.pc])
+            self.pc = self.reg[operand_a]
+        else:
+            self.pc += 2
+
+    def handle_JMP(self):
+        operand_a = self.ram_read(self.pc + 1)
+        self.pc = self.reg[operand_a]
+
 
     def handle_push(self):
         # operand_a is the next available spot
@@ -118,16 +161,13 @@ class CPU:
     def handle_pop(self):
         # Retrieve value from RAM @ SP
         operand_a = self.ram_read(self.pc + 1)
-        # print("reg", self.reg)
+
         copy = self.ram[self.reg[self.sp]]
-        # print("copy", copy)
-        # print("RAM", self.ram)
-        # self.reg[operand_a] = copy
+
         self.reg[operand_a] = copy
+       
         self.reg[self.sp] += 1
-        # Store Value in Reg
-        # increment SP
-        # self.pc += 2
+
         
 
     def load(self):
@@ -164,6 +204,13 @@ class CPU:
 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
+        if op == "CMP":
+            if self.reg[reg_a] > self.reg[reg_b]:
+                self.reg[self.FL] = 0b00000010
+            elif self.reg[reg_a] < self.reg[reg_b]:
+                self.reg[self.FL] = 0b00000100
+            else:
+                self.reg[self.FL] = 0b00000001
         elif op == "MUL":
             self.reg[reg_a] *= self.reg[reg_b]
         elif op == "SUB":
