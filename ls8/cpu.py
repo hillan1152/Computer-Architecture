@@ -9,6 +9,9 @@ HLT = 0b00000001 # HLT
 MUL = 0b10100010 # MUL
 PUSH = 0b01000101
 POP = 0b01000110
+ADD = 0b10100000
+CALL = 0b01010000
+RET = 0b00010001
 
 class CPU:
     """Main CPU class."""
@@ -22,8 +25,11 @@ class CPU:
         self.branchtable[LDI] = self.handle_LDI
         self.branchtable[PRN] = self.handle_PRN
         self.branchtable[MUL] = self.handle_MUL
+        self.branchtable[ADD] = self.handle_ADD
         self.branchtable[PUSH] = self.handle_push
         self.branchtable[POP] = self.handle_pop
+        self.branchtable[CALL] = self.handle_CALL
+        self.branchtable[RET] = self.handle_RET
         # INTERNAL REGISTERS
         self.pc = 0 # keeps address of currently executing instruction
         self.halted = False # lets 
@@ -44,7 +50,24 @@ class CPU:
 
     def handle_HLT(self):
         self.halted = True
-    
+
+    def handle_CALL(self):
+        # make copy of address to return to
+        operand_a = self.ram_read(self.pc + 1) # 00000000
+        # print("self reg", self.reg[self.sp])
+        self.reg[self.sp] -= 1
+        self.ram[self.reg[self.sp]] = self.pc + 2
+
+        self.pc = self.reg[operand_a]
+        # print(self.ram)
+        # print(self.reg)
+        # print("op_a", operand_a)
+
+    def handle_RET(self):
+        pop_stack = self.ram[self.reg[self.sp]]
+        self.pc = pop_stack
+        self.reg[self.sp] += 1
+
     def handle_LDI(self):
         operand_a = self.ram_read(self.pc + 1) # 00000000
         operand_b = self.ram_read(self.pc + 2) # 00000001
@@ -60,6 +83,12 @@ class CPU:
         operand_a = self.ram_read(self.pc + 1)
         operand_b = self.ram_read(self.pc + 2)
         self.alu("MUL", operand_a, operand_b)
+        # self.pc += 3
+
+    def handle_ADD(self):
+        operand_a = self.ram_read(self.pc + 1)
+        operand_b = self.ram_read(self.pc + 2)
+        self.alu("ADD", operand_a, operand_b)
         # self.pc += 3
 
     def handle_push(self):
@@ -100,7 +129,6 @@ class CPU:
         # increment SP
         # self.pc += 2
         
-
 
     def load(self):
         """Load a program into memory."""
@@ -173,10 +201,12 @@ class CPU:
         # needs: PC, IR, ram_read
         while not self.halted:
             IR = self.ram_read(self.pc)
+            # print('IR', IR)
 
             if IR in self.branchtable:
                 self.branchtable[IR]()
-                self.pc += (IR >> 6) + 1
+                if (IR & 0b00010000) >> 4 == 0:
+                    self.pc += (IR >> 6) + 1
             else:
                 print(f"unknown instruction {IR} at address {self.pc}")
                 exit(1)
